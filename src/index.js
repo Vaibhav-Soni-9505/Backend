@@ -1,8 +1,7 @@
+// import dotenv from "dotenv" -->alreay imported the .env varibales while running the server check script in package.json file.
+// dotenv.config({path: "./.env"});
 import connectDB from "./db/index.js"
 import { app } from "./app.js";
-import dotenv from "dotenv"
-dotenv.config({path: "./.env"});
-
 
 
 connectDB()
