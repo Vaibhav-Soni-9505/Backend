@@ -139,7 +139,7 @@ const logoutUser = asyncHandler(async(req,res)=>{
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {refreshToken: undefined}
+      $unset: {refreshToken: 1}
     },
     {
       new:true
@@ -176,7 +176,7 @@ const refreshAccessToken = asyncHandler(async(req,res)=>{
        throw new ApiError(402,"Refresh Token is not correct or expired!!");
     }
   
-    const {accessToken,newRefreshToken} = await generateAccessAndRefreshToken(user._id);
+    const {accessToken,refreshToken:newRefreshToken} = await generateAccessAndRefreshToken(user._id);
   
     const options = {
       httpOnly: true,
@@ -231,17 +231,17 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
     throw new ApiError(401,"Atleast one field is required!!");
   }
 
-  const updataData = {};
+  const updateData = {};
 
-  if(username) updataData.username = username;
-  if(email) updataData.email = email;
-  if(fullName) updataData.fullName = fullName;
+  if(username) updateData.username = username;
+  if(email) updateData.email = email;
+  if(fullName) updateData.fullName = fullName;
 
-  const user = User.findByIdAndUpdate(req?.user?._id,{$set:updataData},{new:true}).select("-password -refreshToken");
+  const user = await User.findByIdAndUpdate(req?.user?._id,{$set:updateData},{new:true}).select("-password -refreshToken");
 
   return res
   .status(201)
-  .json(new ApiResponse(201,"Account Details Updated Successfully",user));
+  .json(new ApiResponse(201,"Account Details Updated Successfully",{user}));
 });
 
 const updateUserAvatar = asyncHandler(async(req,res)=>{
@@ -398,12 +398,12 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
           }
         ]
       }
-    }
+    },
   ]);
 
   return res
   .status(200)
-  .json(new ApiResponse(200,"Watch History Fetched Successfully!!",user[0].watchHistory))
+  .json(new ApiResponse(200,"Watch History Fetched Successfully!!",{watchHistory:user[0].watchHistory}))
 })
 
 export {
