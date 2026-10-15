@@ -1,8 +1,10 @@
 import { Video } from "../models/video.model.js";
+import { VideoView } from "../models/videoView.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose"
 
 
 const uploadVideo = asyncHandler(async(req,res)=>{
@@ -50,14 +52,13 @@ const uploadVideo = asyncHandler(async(req,res)=>{
     videoPublicId: videoFile?.public_id
   });
 
-  const uploadedVideo = await Video.findById(video?._id);
-  if(!uploadedVideo){
+  if(!video){
     throw new ApiError(500,"Something went wrong while uploading the video")
   }
 
   return res
   .status(200)
-  .json(new ApiResponse(200,"Video Uploaded Successfully",uploadedVideo))
+  .json(new ApiResponse(200,"Video Uploaded Successfully",video))
   
 })
 
@@ -259,6 +260,70 @@ const deleteVideo = asyncHandler(async(req,res)=>{
 
 })
 
+const incrementVideoViews = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+
+  const video = await Video.findOne({
+    _id: videoId,
+    isPublished: true
+  });
+
+  if (!video) {
+    throw new ApiError(404, "Video does not exist!!");
+  }
+
+  const session = await mongoose.startSession();
+  let updatedViews;
+
+  try {
+    await session.withTransaction(async () => {
+      // Step 1: Create a unique view record
+      await VideoView.create(
+        [{
+          video: videoId,
+          viewer: req.user._id
+        }],
+        { session }
+      );
+
+      // Step 2: Increment the view count
+      const result = await Video.findOneAndUpdate(
+        { _id: videoId, isPublished: true },
+        { $inc: { views: 1 } },
+        { new: true, session }
+      );
+
+      if (!result) {
+        throw new ApiError(404, "Video does not exist!!");
+      }
+
+      updatedViews = result.views;
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      throw new ApiError(409, "You have already viewed this video");
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        "View Counts Successfully",
+        updatedViews
+      )
+    );
+});
+
 export{
   uploadVideo,
   togglePublishStatus,
@@ -266,5 +331,6 @@ export{
   getVideoById,
   getOwnerVideoById,
   updateVideoDetails,
-  deleteVideo
+  deleteVideo,
+  incrementVideoViews
 }

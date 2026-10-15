@@ -1,9 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { deleteVideo, getAllVideos, getOwnerVideoById, getVideoById, togglePublishStatus, updateVideoDetails, uploadVideo } from "../controllers/video.controller.js";
+import { deleteVideo, getAllVideos, getOwnerVideoById, getVideoById, incrementVideoViews, togglePublishStatus, updateVideoDetails, uploadVideo } from "../controllers/video.controller.js";
 import { verifyjwt } from "../middlewares/auth.middleware.js";
-import multer from "multer";
-import { updateAccountDetails } from "../controllers/user.controller.js";
 
 
 const router = Router();
@@ -42,5 +40,6 @@ router.route("/:videoId/update-details").patch(
   updateVideoDetails
 )
 router.route("/:videoId/delete").delete(verifyjwt,deleteVideo);
+router.route("/:videoId/viewCount").get(verifyjwt,incrementVideoViews)
 
 export default router;
